@@ -24,7 +24,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const participants = details.participants || [];
         const participantsHtml = participants.length
           ? `<ul class="participants-list">${participants
-              .map((p) => `<li>${p}</li>`)
+              .map(
+                (p) => `<li>${p} <button class="remove-participant" data-activity="${encodeURIComponent(
+                  name
+                )}" data-email="${encodeURIComponent(p)}" aria-label="Remove ${p}">×</button></li>`
+              )
               .join("")}</ul>`
           : `<p class="no-participants">No participants yet</p>`;
 
@@ -41,6 +45,37 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
 
         activitiesList.appendChild(activityCard);
+
+          // Attach click handlers for remove buttons (delegation would also work)
+          Array.from(activityCard.querySelectorAll('.remove-participant')).forEach((btn) => {
+            btn.addEventListener('click', async (e) => {
+              const activityName = decodeURIComponent(btn.dataset.activity);
+              const email = decodeURIComponent(btn.dataset.email);
+
+              if (!confirm(`Remove ${email} from ${activityName}?`)) return;
+
+              try {
+                const resp = await fetch(
+                  `/activities/${encodeURIComponent(activityName)}/participants?email=${encodeURIComponent(
+                    email
+                  )}`,
+                  { method: 'DELETE' }
+                );
+
+                const result = await resp.json();
+                if (resp.ok) {
+                  // Refresh activities list
+                  fetchActivities();
+                } else {
+                  console.error('Failed to remove participant:', result);
+                  alert(result.detail || 'Failed to remove participant');
+                }
+              } catch (err) {
+                console.error('Error removing participant:', err);
+                alert('Error removing participant. See console for details.');
+              }
+            });
+          });
 
         // Add option to select dropdown
         const option = document.createElement("option");
